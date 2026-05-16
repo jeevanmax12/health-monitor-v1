@@ -3,297 +3,310 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VitalGuard - Patient Health Monitor</title>
+    <title>VitalGuard Pro - Patient Monitor</title>
+    
+    <!-- External Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
-        .glass-card { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .glass-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); }
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; scroll-behavior: smooth; }
         
-        .section-transition {
-            animation: slideUpFade 0.5s ease-out forwards;
+        .glass-card { 
+            background: rgba(255, 255, 255, 0.95); 
+            backdrop-filter: blur(8px); 
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        .glass-card:hover { 
+            transform: translateY(-8px) scale(1.02); 
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
         }
 
-        @keyframes slideUpFade {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        .section-transition { 
+            animation: slideUpFade 0.6s ease-out forwards; 
         }
 
-        .pulse { animation: pulse-red 2s infinite; }
-        @keyframes pulse-red {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        @keyframes slideUpFade { 
+            from { opacity: 0; transform: translateY(30px); } 
+            to { opacity: 1; transform: translateY(0); } 
         }
+
+        .pulse-danger { 
+            animation: pulse-red 1.5s infinite; 
+        }
+
+        @keyframes pulse-red { 
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 
+            70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); } 
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } 
+        }
+
+        .nav-link-active {
+            background-color: #1e293b;
+            color: #ffffff;
+            border-left: 4px solid #ef4444;
+        }
+
+        /* Responsive height for chart */
+        #chart-container { height: 300px; }
+        @media (max-width: 640px) { #chart-container { height: 200px; } }
     </style>
 </head>
 <body class="flex flex-col md:flex-row min-h-screen">
 
-    <nav class="w-full md:w-64 bg-slate-900 text-white flex flex-col p-6 space-y-8">
-        <div class="flex items-center space-x-3">
-            <div class="bg-red-500 p-2 rounded-lg">
-                <i class="fas fa-heartbeat text-2xl"></i>
+    <nav class="w-full md:w-72 bg-slate-900 text-slate-300 flex flex-col p-6 shadow-2xl z-20">
+        <div class="flex items-center space-x-3 mb-10 px-2">
+            <div class="bg-gradient-to-br from-red-500 to-pink-600 p-2.5 rounded-xl shadow-lg shadow-red-500/20">
+                <i class="fas fa-heartbeat text-white text-2xl"></i>
             </div>
-            <span class="text-xl font-bold tracking-tight">VitalGuard</span>
+            <div>
+                <h2 class="text-white text-xl font-bold tracking-tight">VitalGuard</h2>
+                <p class="text-xs text-slate-500 uppercase tracking-widest font-semibold">Pro Monitor</p>
+            </div>
         </div>
 
-        <div class="flex-grow space-y-2">
-            <button onclick="showSection('dashboard')" class="nav-btn w-full flex items-center space-x-3 p-3 rounded-xl bg-slate-800 text-white">
-                <i class="fas fa-chart-line"></i> <span>Dashboard</span>
+        <div class="space-y-3 flex-grow">
+            <button onclick="showSection('dashboard')" id="btn-dashboard" class="nav-btn w-full flex items-center space-x-4 p-4 rounded-xl transition nav-link-active">
+                <i class="fas fa-grid-2"></i> <span class="font-medium text-sm">Real-time Dashboard</span>
             </button>
-            <button onclick="showSection('history')" class="nav-btn w-full flex items-center space-x-3 p-3 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition">
-                <i class="fas fa-history"></i> <span>History</span>
+            <button onclick="showSection('history')" id="btn-history" class="nav-btn w-full flex items-center space-x-4 p-4 rounded-xl hover:bg-slate-800 hover:text-white transition">
+                <i class="fas fa-calendar-alt"></i> <span class="font-medium text-sm">Medical History</span>
             </button>
-            <button onclick="showSection('alerts')" class="nav-btn w-full flex items-center space-x-3 p-3 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition">
-                <i class="fas fa-bell"></i> <span>Alerts</span>
+            <button onclick="showSection('alerts')" id="btn-alerts" class="nav-btn w-full flex items-center space-x-4 p-4 rounded-xl hover:bg-slate-800 hover:text-white transition">
+                <i class="fas fa-bell"></i> <span class="font-medium text-sm">Emergency Alerts</span>
             </button>
-            <button onclick="showSection('profile')" class="nav-btn w-full flex items-center space-x-3 p-3 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition">
-                <i class="fas fa-user-circle"></i> <span>Profile</span>
+            <button onclick="showSection('profile')" id="btn-profile" class="nav-btn w-full flex items-center space-x-4 p-4 rounded-xl hover:bg-slate-800 hover:text-white transition">
+                <i class="fas fa-user-circle"></i> <span class="font-medium text-sm">Patient Profile</span>
             </button>
         </div>
 
-        <div class="bg-slate-800 p-4 rounded-2xl">
-            <p class="text-xs text-slate-400 mb-1">Assigned Doctor</p>
-            <p class="font-semibold text-sm">Dr. Sarah Jenkins</p>
-            <button class="mt-2 text-xs bg-blue-600 hover:bg-blue-700 py-1 px-3 rounded-full w-full transition">Call Clinic</button>
+        <div class="mt-auto pt-6 border-t border-slate-800">
+            <div class="bg-slate-800/50 rounded-2xl p-4 flex items-center space-x-3">
+                <img src="https://placehold.co/100x100/3b82f6/ffffff?text=JD" class="w-10 h-10 rounded-full">
+                <div>
+                    <p class="text-sm font-bold text-white">John Doe</p>
+                    <p class="text-[10px] text-slate-500 uppercase">Patient #VG-9921</p>
+                </div>
+            </div>
         </div>
     </nav>
 
-    <main class="flex-1 p-4 md:p-8 overflow-y-auto">
-        <header class="flex justify-between items-center mb-8">
+    <main class="flex-1 p-6 md:p-10 overflow-y-auto">
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-10">
             <div>
-                <h1 id="page-title" class="text-3xl font-bold text-slate-800">Live Dashboard</h1>
-                <p class="text-slate-500">Real-time vitals monitoring</p>
+                <h1 id="page-title" class="text-4xl font-extrabold text-slate-800 tracking-tight">Live Dashboard</h1>
+                <p id="connection-status" class="text-slate-500 mt-1 flex items-center">
+                    <span id="status-dot" class="w-2.5 h-2.5 bg-yellow-500 rounded-full mr-2"></span>
+                    <span id="status-text">Initialising connection...</span>
+                </p>
             </div>
-            <div class="flex items-center space-x-4">
-                <div class="text-right hidden sm:block">
-                    <p class="text-sm font-semibold text-slate-700">Patient ID: #VG-9921</p>
-                    <p class="text-xs text-green-500 flex items-center justify-end">
-                        <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span> System Online
-                    </p>
+            
+            <div class="flex items-center gap-3 bg-white p-2 pr-4 rounded-2xl shadow-sm border border-slate-100">
+                <div class="bg-green-100 text-green-600 p-2.5 rounded-xl">
+                    <i class="fas fa-shield-alt"></i>
                 </div>
-                <img src="https://placehold.co/100x100/3b82f6/ffffff?text=JD" class="w-12 h-12 rounded-full border-2 border-white shadow-md">
+                <div class="text-sm">
+                    <p class="font-bold text-slate-700">Encrypted Cloud Link</p>
+                    <p class="text-xs text-slate-400">Firebase Real-time Ready</p>
+                </div>
             </div>
         </header>
 
-        <div id="dashboard" class="space-y-6 section section-transition">
+        <!-- DASHBOARD SECTION -->
+        <div id="dashboard" class="section section-transition space-y-8">
+            <!-- Vitals Grid -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <!-- Vitals Card: Heart Rate -->
-                <div class="glass-card p-6 rounded-3xl shadow-sm hover:shadow-md transition">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="bg-red-50 p-3 rounded-2xl text-red-500"><i class="fas fa-heartbeat text-xl"></i></div>
-                        <span class="text-xs font-bold text-green-500 bg-green-50 px-2 py-1 rounded-lg">Normal</span>
+                <!-- Heart Rate -->
+                <div class="glass-card p-6 rounded-[2rem] relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-24 h-24 bg-red-50 rounded-full -mr-10 -mt-10 opacity-50"></div>
+                    <div class="flex justify-between items-start mb-6">
+                        <div class="bg-red-100 p-4 rounded-2xl text-red-600 shadow-sm">
+                            <i class="fas fa-heart-pulse text-2xl"></i>
+                        </div>
+                        <span id="badge-hr" class="px-3 py-1 bg-slate-100 text-slate-400 text-[10px] font-bold rounded-full uppercase tracking-wider">No Data</span>
                     </div>
-                    <h3 class="text-slate-500 text-sm font-medium">Heart Rate</h3>
-                    <div class="flex items-baseline space-x-2">
-                        <span id="val-bpm" class="text-4xl font-bold text-slate-800">72</span>
-                        <span class="text-slate-400 font-semibold">BPM</span>
-                    </div>
-                </div>
-
-                <!-- Vitals Card: SpO2 -->
-                <div class="glass-card p-6 rounded-3xl shadow-sm hover:shadow-md transition">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="bg-blue-50 p-3 rounded-2xl text-blue-500"><i class="fas fa-lungs text-xl"></i></div>
-                        <span class="text-xs font-bold text-green-500 bg-green-50 px-2 py-1 rounded-lg">Ideal</span>
-                    </div>
-                    <h3 class="text-slate-500 text-sm font-medium">SpO2 Level</h3>
-                    <div class="flex items-baseline space-x-2">
-                        <span id="val-spo2" class="text-4xl font-bold text-slate-800">98</span>
-                        <span class="text-slate-400 font-semibold">%</span>
+                    <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">Heart Rate</h3>
+                    <div class="flex items-baseline gap-1 mt-1">
+                        <span id="val-hr" class="text-5xl font-black text-slate-800">--</span>
+                        <span class="text-slate-400 font-bold text-lg">BPM</span>
                     </div>
                 </div>
 
-                <!-- Vitals Card: Temperature -->
-                <div class="glass-card p-6 rounded-3xl shadow-sm hover:shadow-md transition">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="bg-orange-50 p-3 rounded-2xl text-orange-500"><i class="fas fa-thermometer-half text-xl"></i></div>
-                        <span class="text-xs font-bold text-green-500 bg-green-50 px-2 py-1 rounded-lg">Stable</span>
+                <!-- SpO2 -->
+                <div class="glass-card p-6 rounded-[2rem] relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-full -mr-10 -mt-10 opacity-50"></div>
+                    <div class="flex justify-between items-start mb-6">
+                        <div class="bg-blue-100 p-4 rounded-2xl text-blue-600 shadow-sm">
+                            <i class="fas fa-lungs text-2xl"></i>
+                        </div>
+                        <span id="badge-spo2" class="px-3 py-1 bg-slate-100 text-slate-400 text-[10px] font-bold rounded-full uppercase tracking-wider">No Data</span>
                     </div>
-                    <h3 class="text-slate-500 text-sm font-medium">Body Temp</h3>
-                    <div class="flex items-baseline space-x-2">
-                        <span id="val-temp" class="text-4xl font-bold text-slate-800">98.6</span>
-                        <span class="text-slate-400 font-semibold">°F</span>
+                    <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">SpO2 Level</h3>
+                    <div class="flex items-baseline gap-1 mt-1">
+                        <span id="val-spo2" class="text-5xl font-black text-slate-800">--</span>
+                        <span class="text-slate-400 font-bold text-lg">%</span>
                     </div>
                 </div>
 
-                <!-- Vitals Card: Blood Sugar -->
-                <div class="glass-card p-6 rounded-3xl shadow-sm hover:shadow-md transition">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="bg-purple-50 p-3 rounded-2xl text-purple-500"><i class="fas fa-tint text-xl"></i></div>
-                        <span class="text-xs font-bold text-orange-500 bg-orange-50 px-2 py-1 rounded-lg">Warning</span>
+                <!-- Temperature -->
+                <div class="glass-card p-6 rounded-[2rem] relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-24 h-24 bg-orange-50 rounded-full -mr-10 -mt-10 opacity-50"></div>
+                    <div class="flex justify-between items-start mb-6">
+                        <div class="bg-orange-100 p-4 rounded-2xl text-orange-600 shadow-sm">
+                            <i class="fas fa-thermometer-half text-2xl"></i>
+                        </div>
+                        <span id="badge-temp" class="px-3 py-1 bg-slate-100 text-slate-400 text-[10px] font-bold rounded-full uppercase tracking-wider">No Data</span>
                     </div>
-                    <h3 class="text-slate-500 text-sm font-medium">Blood Sugar</h3>
-                    <div class="flex items-baseline space-x-2">
-                        <span id="val-glucose" class="text-4xl font-bold text-slate-800">145</span>
-                        <span class="text-slate-400 font-semibold">mg/dL</span>
+                    <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">Body Temp</h3>
+                    <div class="flex items-baseline gap-1 mt-1">
+                        <span id="val-temp" class="text-5xl font-black text-slate-800">--</span>
+                        <span class="text-slate-400 font-bold text-lg">°F</span>
+                    </div>
+                </div>
+
+                <!-- Glucose -->
+                <div class="glass-card p-6 rounded-[2rem] relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-24 h-24 bg-purple-50 rounded-full -mr-10 -mt-10 opacity-50"></div>
+                    <div class="flex justify-between items-start mb-6">
+                        <div class="bg-purple-100 p-4 rounded-2xl text-purple-600 shadow-sm">
+                            <i class="fas fa-droplet text-2xl"></i>
+                        </div>
+                        <span id="badge-glucose" class="px-3 py-1 bg-slate-100 text-slate-400 text-[10px] font-bold rounded-full uppercase tracking-wider">No Data</span>
+                    </div>
+                    <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">Blood Sugar</h3>
+                    <div class="flex items-baseline gap-1 mt-1">
+                        <span id="val-glucose" class="text-5xl font-black text-slate-800">--</span>
+                        <span class="text-slate-400 font-bold text-lg">mg/dL</span>
                     </div>
                 </div>
             </div>
 
-            <div class="glass-card p-6 rounded-3xl shadow-sm">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="font-bold text-slate-800">Vitals Pulse Wave</h3>
-                    <div class="flex space-x-2">
-                        <span class="flex items-center text-xs text-slate-500"><span class="w-3 h-3 bg-red-500 rounded-full mr-1"></span> HR</span>
-                        <span class="flex items-center text-xs text-slate-500"><span class="w-3 h-3 bg-blue-500 rounded-full mr-1"></span> SpO2</span>
+            <div class="glass-card p-8 rounded-[2.5rem] shadow-sm">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-800">Vitals Pulse Wave</h3>
+                        <p class="text-sm text-slate-400 font-medium">Monitoring sync with patient wearable device</p>
+                    </div>
+                    <div class="flex items-center gap-4 bg-slate-50 p-2 rounded-2xl">
+                        <div class="flex items-center gap-2 px-3 py-1">
+                            <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                            <span class="text-xs font-bold text-slate-600">HR</span>
+                        </div>
+                        <div class="flex items-center gap-2 px-3 py-1">
+                            <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
+                            <span class="text-xs font-bold text-slate-600">SpO2</span>
+                        </div>
                     </div>
                 </div>
-                <div class="h-64 relative">
+                <div id="chart-container">
                     <canvas id="vitalsChart"></canvas>
                 </div>
             </div>
         </div>
 
-        <div id="history" class="hidden section space-y-6 section-transition">
-            <div class="glass-card p-6 rounded-3xl">
-                <h3 class="font-bold text-slate-800 mb-4">Monthly History Log</h3>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left">
-                        <thead>
-                            <tr class="text-slate-400 border-b border-slate-100 text-sm">
-                                <th class="pb-4 font-medium">Date & Time</th>
-                                <th class="pb-4 font-medium">Avg BPM</th>
-                                <th class="pb-4 font-medium">SpO2 %</th>
-                                <th class="pb-4 font-medium">Sugar Level</th>
-                                <th class="pb-4 font-medium">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody class="text-slate-600 text-sm">
-                            <tr class="border-b border-slate-50">
-                                <td class="py-4">Oct 12, 10:30 AM</td>
-                                <td class="py-4 font-semibold">74</td>
-                                <td class="py-4">97%</td>
-                                <td class="py-4">120 mg/dL</td>
-                                <td class="py-4 text-green-500 font-bold">Stable</td>
-                            </tr>
-                            <tr class="border-b border-slate-50">
-                                <td class="py-4">Oct 12, 08:00 AM</td>
-                                <td class="py-4 font-semibold">82</td>
-                                <td class="py-4">98%</td>
-                                <td class="py-4">155 mg/dL</td>
-                                <td class="py-4 text-orange-500 font-bold">Elevated</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+        <!-- OTHER SECTIONS (Placeholders) -->
+        <div id="history" class="section section-transition hidden text-center py-20 bg-white rounded-[2rem]">
+            <i class="fas fa-folder-open text-6xl text-slate-200 mb-4"></i>
+            <h2 class="text-2xl font-bold text-slate-800">Medical Archives</h2>
+            <p class="text-slate-500">Historical data is being compiled from the cloud...</p>
         </div>
 
-        <div id="alerts" class="hidden section space-y-6 section-transition">
-            <div class="bg-red-50 border border-red-100 p-8 rounded-3xl text-center">
-                <div class="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4 pulse shadow-lg shadow-red-200">
-                    <i class="fas fa-exclamation-triangle text-3xl text-white"></i>
-                </div>
-                <h2 class="text-2xl font-bold text-red-600 mb-2">Emergency Protocols</h2>
-                <p class="text-red-500 max-w-md mx-auto mb-6">In a real scenario, pressing this will trigger an automated SMS and Call to your assigned emergency contacts and nearest hospital.</p>
-                <div class="flex flex-col sm:flex-row justify-center gap-4">
-                    <button onclick="simulateSOS()" class="bg-red-600 text-white px-8 py-3 rounded-2xl font-bold hover:bg-red-700 transition">
-                        SIMULATE EMERGENCY SMS
-                    </button>
-                    <button class="bg-white border border-red-200 text-red-600 px-8 py-3 rounded-2xl font-bold hover:bg-red-50 transition">
-                        Update Contacts
-                    </button>
-                </div>
-            </div>
-            
-            <div id="sms-log" class="glass-card p-6 rounded-3xl hidden">
-                <h3 class="font-bold text-slate-800 mb-4 text-sm uppercase tracking-wider">SMS Dispatch Log</h3>
-                <div id="log-items" class="space-y-3"></div>
-            </div>
+        <div id="alerts" class="section section-transition hidden text-center py-20 bg-white rounded-[2rem]">
+            <i class="fas fa-shield-virus text-6xl text-slate-200 mb-4"></i>
+            <h2 class="text-2xl font-bold text-slate-800">Alert Logs</h2>
+            <p class="text-slate-500">Emergency protocol status: ACTIVE</p>
         </div>
 
-        <div id="profile" class="hidden section section-transition">
-            <div class="max-w-2xl bg-white p-8 rounded-3xl shadow-sm">
-                <div class="flex items-center space-x-6 mb-8">
-                    <img src="https://placehold.co/200x200/3b82f6/ffffff?text=John" class="w-32 h-32 rounded-3xl">
-                    <div>
-                        <h2 class="text-2xl font-bold text-slate-800">John Doe</h2>
-                        <p class="text-slate-500">Age: 52 | Gender: Male</p>
-                        <p class="text-slate-500">Blood Type: O Positive</p>
-                    </div>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-2">Hospital ID</label>
-                        <input type="text" value="HG-882-991" disabled class="w-full bg-slate-50 border-none rounded-xl p-3 text-slate-500">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-2">Emergency Phone</label>
-                        <input type="text" value="+1 (555) 000-1234" class="w-full bg-slate-50 border-none rounded-xl p-3">
-                    </div>
-                    <div class="sm:col-span-2">
-                        <label class="block text-sm font-bold text-slate-700 mb-2">Pre-existing Conditions</label>
-                        <textarea class="w-full bg-slate-50 border-none rounded-xl p-3" rows="3">Type 2 Diabetes, Hypertension.</textarea>
-                    </div>
-                </div>
-                <button class="mt-8 bg-blue-600 text-white px-8 py-3 rounded-2xl font-bold w-full">Save Changes</button>
-            </div>
+        <div id="profile" class="section section-transition hidden text-center py-20 bg-white rounded-[2rem]">
+            <i class="fas fa-id-card text-6xl text-slate-200 mb-4"></i>
+            <h2 class="text-2xl font-bold text-slate-800">Patient Data</h2>
+            <p class="text-slate-500">Managing health identifiers for #VG-9921</p>
         </div>
     </main>
 
     <script>
+        
+        // ==========================================
+        // ===== FIREBASE CONFIG START HERE =========
+        // ==========================================
+        // Copy the keys from your Firebase Console 
+        // and paste them between the quote marks ""
+        // ==========================================
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAsiM3Ha_FPz8O-OxtcZic-gX9bVnVOUFM",
+            authDomain: "healthmonitor-cdf73.firebaseapp.com",
+            databaseURL: "https://console.firebase.google.com/u/0/project/healthmonitor-cdf73/database/healthmonitor-cdf73-default-rtdb/data/~2F",
+            projectId: "healthmonitor-cdf73",
+            storageBucket: "healthmonitor-cdf73.firebasestorage.app",
+            messagingSenderId: "599950246625",
+            appId: "1:599950246625:web:38059c64f0c9bda3cd2da0",
+  measurementId: "G-8KVD28KKBG"
+        };
+
+        // ==========================================
+        // ===== FIREBASE CONFIG END HERE ===========
+        // ==========================================
+
+        // UI State
+        let activeSection = 'dashboard';
         let myChart;
+        const chartLimit = 30;
         const chartData = {
-            labels: Array(20).fill(''),
+            labels: Array(chartLimit).fill(''),
             datasets: [
                 {
                     label: 'Heart Rate',
                     borderColor: '#ef4444',
-                    borderWidth: 2,
-                    data: Array(20).fill(70),
+                    borderWidth: 3,
+                    data: Array(chartLimit).fill(0),
                     tension: 0.4,
-                    pointRadius: 0
+                    pointRadius: 0,
+                    fill: true,
+                    backgroundColor: 'rgba(239, 68, 68, 0.05)'
                 },
                 {
                     label: 'SpO2',
                     borderColor: '#3b82f6',
                     borderWidth: 2,
-                    data: Array(20).fill(98),
+                    data: Array(chartLimit).fill(0),
                     tension: 0.4,
                     pointRadius: 0
                 }
             ]
         };
 
-        function showSection(id) {
-            // Hide all sections
-            document.querySelectorAll('.section').forEach(s => {
-                s.classList.add('hidden');
-                s.classList.remove('section-transition');
-            });
-            
-            // Update nav styles
-            document.querySelectorAll('.nav-btn').forEach(btn => {
-                btn.classList.remove('bg-slate-800', 'text-white');
-                btn.classList.add('text-slate-400');
-            });
-            
-            // Show selected section with transition
-            const activeSection = document.getElementById(id);
-            activeSection.classList.remove('hidden');
-            
-            // Trigger animation restart
-            void activeSection.offsetWidth; 
-            activeSection.classList.add('section-transition');
+        // Initialize Firebase if configured
+        const isFirebaseConfigured = firebaseConfig.apiKey !== "AIzaSyAsiM3Ha_FPz8O-OxtcZic-gX9bVnVOUFM";
 
-            if(event) {
-                event.currentTarget.classList.add('bg-slate-800', 'text-white');
-                event.currentTarget.classList.remove('text-slate-400');
+        function initApp() {
+            if (isFirebaseConfigured) {
+                firebase.initializeApp(firebaseConfig);
+                const db = firebase.database();
+                
+                document.getElementById('status-text').innerText = "Cloud Synced (Live)";
+                document.getElementById('status-dot').className = "w-2.5 h-2.5 bg-green-500 rounded-full mr-2 pulse-danger";
+                
+                // Listen to patient_vitals folder in Firebase
+                db.ref('patient_vitals').on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        updateVitalsUI(data.heart_rate, data.spo2, data.temp, data.glucose);
+                    }
+                });
+            } else {
+                console.warn("Firebase not configured. Running in Competition Demo Mode.");
+                document.getElementById('status-text').innerText = "Demo Mode (Simulation)";
+                startSimulation();
             }
             
-            // Update Title
-            const titles = { dashboard: 'Live Dashboard', history: 'Patient History', alerts: 'Emergency & Alerts', profile: 'Patient Profile' };
-            document.getElementById('page-title').innerText = titles[id];
+            initChart();
         }
 
         function initChart() {
@@ -306,7 +319,12 @@
                     maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
                     scales: {
-                        y: { min: 40, max: 120, grid: { color: '#f1f5f9' } },
+                        y: { 
+                            min: 50, 
+                            max: 150, 
+                            grid: { color: 'rgba(0,0,0,0.03)' },
+                            ticks: { font: { weight: 'bold' } }
+                        },
                         x: { display: false }
                     },
                     animation: false
@@ -314,58 +332,62 @@
             });
         }
 
-        function simulateData() {
-            setInterval(() => {
-                // Heartbeat simulation
-                const hr = 70 + Math.floor(Math.random() * 15);
-                const spo2 = 96 + Math.floor(Math.random() * 4);
-                const temp = (98.2 + Math.random() * 0.8).toFixed(1);
-                const glucose = 140 + Math.floor(Math.random() * 10);
+        function updateVitalsUI(hr, spo2, temp, glucose) {
+            // Update Text
+            document.getElementById('val-hr').innerText = hr || '--';
+            document.getElementById('val-spo2').innerText = spo2 || '--';
+            document.getElementById('val-temp').innerText = temp || '--';
+            document.getElementById('val-glucose').innerText = glucose || '--';
 
-                // Update UI numbers
-                document.getElementById('val-bpm').innerText = hr;
-                document.getElementById('val-spo2').innerText = spo2;
-                document.getElementById('val-temp').innerText = temp;
-                document.getElementById('val-glucose').innerText = glucose;
+            // Logic for Badges (HR)
+            const hrBadge = document.getElementById('badge-hr');
+            if (hr > 100 || hr < 60) {
+                hrBadge.innerText = "Critical";
+                hrBadge.className = "px-3 py-1 bg-red-100 text-red-600 text-[10px] font-bold rounded-full uppercase tracking-wider animate-bounce";
+            } else {
+                hrBadge.innerText = "Stable";
+                hrBadge.className = "px-3 py-1 bg-green-100 text-green-600 text-[10px] font-bold rounded-full uppercase tracking-wider";
+            }
 
-                // Update Chart
-                chartData.datasets[0].data.shift();
-                chartData.datasets[0].data.push(hr);
-                chartData.datasets[1].data.shift();
-                chartData.datasets[1].data.push(spo2);
-                myChart.update();
+            // Logic for SpO2
+            const spo2Badge = document.getElementById('badge-spo2');
+            if (spo2 < 95) {
+                spo2Badge.innerText = "Low O2";
+                spo2Badge.className = "px-3 py-1 bg-orange-100 text-orange-600 text-[10px] font-bold rounded-full uppercase tracking-wider";
+            } else {
+                spo2Badge.innerText = "Normal";
+                spo2Badge.className = "px-3 py-1 bg-blue-100 text-blue-600 text-[10px] font-bold rounded-full uppercase tracking-wider";
+            }
 
-                // Alert Check (Example: if HR > 100)
-                if(hr > 100) {
-                    document.getElementById('dashboard').classList.add('bg-red-50');
-                } else {
-                    document.getElementById('dashboard').classList.remove('bg-red-50');
-                }
-            }, 1500);
+            // Update Chart Data
+            chartData.datasets[0].data.shift();
+            chartData.datasets[0].data.push(hr);
+            chartData.datasets[1].data.shift();
+            chartData.datasets[1].data.push(spo2);
+            if (myChart) myChart.update();
         }
 
-        function simulateSOS() {
-            const log = document.getElementById('sms-log');
-            const items = document.getElementById('log-items');
-            log.classList.remove('hidden');
+        function showSection(sectionId) {
+            document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('nav-link-active', 'bg-slate-800', 'text-white'));
             
-            const time = new Date().toLocaleTimeString();
-            const newItem = document.createElement('div');
-            newItem.className = "flex justify-between items-center bg-slate-50 p-3 rounded-xl border-l-4 border-red-500 animate-pulse";
-            newItem.innerHTML = `
-                <div>
-                    <p class="text-xs font-bold text-slate-400">${time}</p>
-                    <p class="text-sm font-semibold text-slate-800">ALERT: Abnormal BPM (108) detected. Hospital contacted.</p>
-                </div>
-                <span class="text-[10px] bg-blue-100 text-blue-600 px-2 py-1 rounded font-bold">SENT VIA GSM</span>
-            `;
-            items.prepend(newItem);
+            document.getElementById(sectionId).classList.remove('hidden');
+            document.getElementById(`btn-${sectionId}`).classList.add('nav-link-active');
+            
+            const titles = { 'dashboard': 'Live Dashboard', 'history': 'Medical History', 'alerts': 'System Alerts', 'profile': 'Patient Profile' };
+            document.getElementById('page-title').innerText = titles[sectionId];
         }
 
-        window.onload = () => {
-            initChart();
-            simulateData();
-        };
+        // Demo Simulation
+        function startSimulation() {
+            setInterval(() => {
+                const randomHR = 70 + Math.floor(Math.random() * 20);
+                const randomSpO2 = 96 + Math.floor(Math.random() * 4);
+                updateVitalsUI(randomHR, randomSpO2, 98.6, 115);
+            }, 2000);
+        }
+
+        window.onload = initApp;
     </script>
 </body>
 </html>
