@@ -3,226 +3,260 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VitalGuard - Patient Health Monitor</title>
+    <title>VitalGuard Pro - Medical Intelligence</title>
+    
+    <!-- External Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
-        .glass-card { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .glass-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); }
-        .section-transition { animation: slideUpFade 0.5s ease-out forwards; }
-        @keyframes slideUpFade { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .pulse { animation: pulse-red 2s infinite; }
-        @keyframes pulse-red { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        :root {
+            --primary: #ef4444;
+            --secondary: #3b82f6;
+            --bg-light: #f8fafc;
+            --card-light: rgba(255, 255, 255, 0.9);
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: var(--bg-light);
+            transition: background-color 0.3s ease;
+        }
+
+        .glass-card { 
+            background: var(--card-light);
+            backdrop-filter: blur(12px); 
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .nav-active {
+            background: rgba(255, 255, 255, 0.1);
+            border-left: 4px solid var(--primary);
+            color: white !important;
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.4s ease; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body class="flex flex-col md:flex-row min-h-screen">
 
-    <nav class="w-full md:w-64 bg-slate-900 text-white flex flex-col p-6 space-y-8">
-        <div class="flex items-center space-x-3">
-            <div class="bg-red-500 p-2 rounded-lg">
-                <i class="fas fa-heartbeat text-2xl"></i>
+    <nav class="w-full md:w-64 bg-slate-900 text-slate-400 flex flex-col p-6 z-50">
+        <div class="flex items-center gap-3 mb-12">
+            <div class="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center shadow-lg shadow-red-500/20">
+                <i class="fas fa-heartbeat text-white text-xl"></i>
             </div>
-            <span class="text-xl font-bold tracking-tight">VitalGuard</span>
+            <div>
+                <h1 class="text-white font-extrabold text-xl leading-none">VitalGuard</h1>
+                <p class="text-[10px] uppercase tracking-widest font-bold text-slate-500">Analytics Pro</p>
+            </div>
         </div>
 
-        <div class="flex-grow space-y-2">
-            <button onclick="showSection('dashboard')" class="nav-btn w-full flex items-center space-x-3 p-3 rounded-xl bg-slate-800 text-white">
-                <i class="fas fa-chart-line"></i> <span>Dashboard</span>
+        <div class="flex-1 space-y-2">
+            <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-active flex items-center gap-4 w-full p-3 rounded-lg hover:bg-slate-800 transition text-sm font-medium">
+                <i class="fas fa-chart-line w-5"></i> Dashboard
             </button>
-            <button onclick="showSection('history')" class="nav-btn w-full flex items-center space-x-3 p-3 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition">
-                <i class="fas fa-history"></i> <span>History</span>
+            <button onclick="switchTab('history')" id="nav-history" class="flex items-center gap-4 w-full p-3 rounded-lg hover:bg-slate-800 transition text-sm font-medium">
+                <i class="fas fa-history w-5"></i> History
             </button>
-            <button onclick="showSection('alerts')" class="nav-btn w-full flex items-center space-x-3 p-3 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition">
-                <i class="fas fa-bell"></i> <span>Alerts</span>
-            </button>
-            <button onclick="showSection('profile')" class="nav-btn w-full flex items-center space-x-3 p-3 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition">
-                <i class="fas fa-user-circle"></i> <span>Profile</span>
+            <button onclick="switchTab('patients')" id="nav-patients" class="flex items-center gap-4 w-full p-3 rounded-lg hover:bg-slate-800 transition text-sm font-medium">
+                <i class="fas fa-users w-5"></i> Patients
             </button>
         </div>
     </nav>
 
     <main class="flex-1 p-4 md:p-8 overflow-y-auto">
-        <header class="flex justify-between items-center mb-8">
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
             <div>
-                <h1 id="page-title" class="text-3xl font-bold text-slate-800">Live Dashboard</h1>
-                <p id="connection-status" class="text-slate-500">Connecting to Cloud Database...</p>
-            </div>
-            <div class="flex items-center space-x-4">
-                <div class="text-right hidden sm:block">
-                    <p class="text-sm font-semibold text-slate-700">Patient ID: #VG-9921</p>
-                    <p class="text-xs text-green-500 flex items-center justify-end">
-                        <span id="live-indicator" class="w-2 h-2 bg-slate-400 rounded-full mr-2"></span> <span id="status-text">Standby</span>
-                    </p>
+                <h2 id="tab-title" class="text-3xl font-black text-slate-800 tracking-tight">Real-time Vitals</h2>
+                <div class="flex items-center gap-2 mt-1">
+                    <span id="status-dot" class="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></span>
+                    <p id="status-text" class="text-sm text-slate-500 font-medium tracking-wide">Syncing with hardware...</p>
                 </div>
-                <img src="https://placehold.co/100x100/3b82f6/ffffff?text=JD" class="w-12 h-12 rounded-full border-2 border-white shadow-md">
             </div>
         </header>
 
-        <div id="dashboard" class="space-y-6 section section-transition">
+        <div id="tab-dashboard" class="tab-content active space-y-6">
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <!-- Vitals Cards -->
-                <div class="glass-card p-6 rounded-3xl shadow-sm">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="bg-red-50 p-3 rounded-2xl text-red-500"><i class="fas fa-heartbeat text-xl"></i></div>
-                        <span id="badge-bpm" class="text-xs font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-lg">Waiting</span>
-                    </div>
-                    <h3 class="text-slate-500 text-sm font-medium">Heart Rate</h3>
-                    <div class="flex items-baseline space-x-2">
-                        <span id="val-bpm" class="text-4xl font-bold text-slate-800">--</span>
-                        <span class="text-slate-400 font-semibold">BPM</span>
+                <div class="glass-card p-6 rounded-3xl">
+                    <h3 class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-4">Heart Rate</h3>
+                    <div class="flex items-baseline gap-1">
+                        <span id="val-hr" class="text-5xl font-black text-slate-800">--</span>
+                        <span class="text-slate-400 font-bold text-lg">bpm</span>
                     </div>
                 </div>
-
-                <div class="glass-card p-6 rounded-3xl shadow-sm">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="bg-blue-50 p-3 rounded-2xl text-blue-500"><i class="fas fa-lungs text-xl"></i></div>
-                        <span id="badge-spo2" class="text-xs font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-lg">Waiting</span>
-                    </div>
-                    <h3 class="text-slate-500 text-sm font-medium">SpO2 Level</h3>
-                    <div class="flex items-baseline space-x-2">
-                        <span id="val-spo2" class="text-4xl font-bold text-slate-800">--</span>
-                        <span class="text-slate-400 font-semibold">%</span>
+                <div class="glass-card p-6 rounded-3xl">
+                    <h3 class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-4">SpO2 Level</h3>
+                    <div class="flex items-baseline gap-1">
+                        <span id="val-spo2" class="text-5xl font-black text-slate-800">--</span>
+                        <span class="text-slate-400 font-bold text-lg">%</span>
                     </div>
                 </div>
-
-                <div class="glass-card p-6 rounded-3xl shadow-sm">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="bg-orange-50 p-3 rounded-2xl text-orange-500"><i class="fas fa-thermometer-half text-xl"></i></div>
-                        <span id="badge-temp" class="text-xs font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-lg">Waiting</span>
-                    </div>
-                    <h3 class="text-slate-500 text-sm font-medium">Body Temp</h3>
-                    <div class="flex items-baseline space-x-2">
-                        <span id="val-temp" class="text-4xl font-bold text-slate-800">--</span>
-                        <span class="text-slate-400 font-semibold">°F</span>
+                <div class="glass-card p-6 rounded-3xl">
+                    <h3 class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-4">Body Temp</h3>
+                    <div class="flex items-baseline gap-1">
+                        <span id="val-temp" class="text-5xl font-black text-slate-800">--</span>
+                        <span class="text-slate-400 font-bold text-lg">°F</span>
                     </div>
                 </div>
-
-                <div class="glass-card p-6 rounded-3xl shadow-sm">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="bg-purple-50 p-3 rounded-2xl text-purple-500"><i class="fas fa-tint text-xl"></i></div>
-                        <span id="badge-glucose" class="text-xs font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-lg">Waiting</span>
-                    </div>
-                    <h3 class="text-slate-500 text-sm font-medium">Blood Sugar</h3>
-                    <div class="flex items-baseline space-x-2">
-                        <span id="val-glucose" class="text-4xl font-bold text-slate-800">--</span>
-                        <span class="text-slate-400 font-semibold">mg/dL</span>
+                <div class="glass-card p-6 rounded-3xl">
+                    <h3 class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-4">Glucose</h3>
+                    <div class="flex items-baseline gap-1">
+                        <span id="val-glucose" class="text-5xl font-black text-slate-800">--</span>
+                        <span class="text-slate-400 font-bold text-lg">mg/dL</span>
                     </div>
                 </div>
             </div>
 
-            <div class="glass-card p-6 rounded-3xl shadow-sm">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="font-bold text-slate-800">Vitals Pulse Wave</h3>
-                    <div class="flex space-x-2">
-                        <span class="flex items-center text-xs text-slate-500"><span class="w-3 h-3 bg-red-500 rounded-full mr-1"></span> HR</span>
-                        <span class="flex items-center text-xs text-slate-500"><span class="w-3 h-3 bg-blue-500 rounded-full mr-1"></span> SpO2</span>
-                    </div>
-                </div>
-                <div class="h-64 relative">
-                    <canvas id="vitalsChart"></canvas>
+            <div class="glass-card p-8 rounded-[2.5rem]">
+                <div class="h-[300px]">
+                    <canvas id="liveChart"></canvas>
                 </div>
             </div>
         </div>
 
-        <!-- Other sections (History, Alerts, Profile) hidden for brevity -->
-        <div id="history" class="hidden section section-transition">... History Content ...</div>
-        <div id="alerts" class="hidden section section-transition">... Alerts Content ...</div>
-        <div id="profile" class="hidden section section-transition">... Profile Content ...</div>
+        <div id="tab-history" class="tab-content text-center py-20 glass-card rounded-[2.5rem]">
+            <h2 class="text-2xl font-bold text-slate-800">Medical Archives</h2>
+            <p class="text-slate-400">Historical records will appear here.</p>
+        </div>
+
+        <div id="tab-patients" class="tab-content text-center py-20 glass-card rounded-[2.5rem]">
+            <h2 class="text-2xl font-bold text-slate-800">Patient Directory</h2>
+            <p class="text-slate-400">Manage patient profiles and data access.</p>
+        </div>
     </main>
 
     <script>
-        // TODO: Replace with your actual Firebase config from the Guide
         const firebaseConfig = {
-            apiKey: "REPLACE_THIS",
-            authDomain: "REPLACE_THIS",
-            databaseURL: "REPLACE_THIS",
-            projectId: "REPLACE_THIS",
-            storageBucket: "REPLACE_THIS",
-            messagingSenderId: "REPLACE_THIS",
-            appId: "REPLACE_THIS"
+            apiKey: "AIzaSyAsiM3Ha_FPz8O-OxtcZic-gX9bVnVOUFM",
+            authDomain: "healthmonitor-cdf73.firebaseapp.com",
+            /* FIXED: Using the actual database endpoint, not the console link */
+            databaseURL: "https://healthmonitor-cdf73-default-rtdb.firebaseio.com/",
+            projectId: "healthmonitor-cdf73",
+            storageBucket: "healthmonitor-cdf73.firebasestorage.app",
+            messagingSenderId: "599950246625",
+            appId: "1:599950246625:web:38059c64f0c9bda3cd2da0"
         };
 
-        // Initialize Firebase
-        if (firebaseConfig.apiKey !== "REPLACE_THIS") {
-            firebase.initializeApp(firebaseConfig);
-            const database = firebase.database();
-            
-            // UI Setup
-            document.getElementById('status-text').innerText = "Real-time Connected";
-            document.getElementById('live-indicator').className = "w-2 h-2 bg-green-500 rounded-full mr-2 pulse";
-            document.getElementById('connection-status').innerText = "Receiving Cloud Data";
+        let mainChart;
+        const historyLimit = 30;
+        
+        function initChart() {
+            const ctx = document.getElementById('liveChart').getContext('2d');
+            mainChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array(historyLimit).fill(''),
+                    datasets: [{
+                        label: 'Heart Rate',
+                        data: Array(historyLimit).fill(0),
+                        borderColor: '#ef4444',
+                        tension: 0.4,
+                        fill: true,
+                        backgroundColor: 'rgba(239, 68, 68, 0.05)'
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, animation: false }
+            });
+        }
 
-            // Listen for changes in the database
-            database.ref('patient_vitals').on('value', (snapshot) => {
-                const data = snapshot.val();
-                if (data) {
-                    updateUI(data.heart_rate, data.spo2, data.temp, data.glucose);
+        function switchTab(tabId) {
+            // Hide all contents
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            
+            // Remove active classes from navigation buttons safely
+            document.querySelectorAll('nav button').forEach(btn => {
+                if (btn.id && btn.id.startsWith('nav-')) {
+                    btn.classList.remove('nav-active');
                 }
             });
-        } else {
-            console.log("Firebase not configured. Using Simulation Mode.");
-            startSimulation();
+            
+            // Show target content
+            const targetContent = document.getElementById(`tab-${tabId}`);
+            const targetNav = document.getElementById(`nav-${tabId}`);
+            
+            if (targetContent) targetContent.classList.add('active');
+            if (targetNav) targetNav.classList.add('nav-active');
+            
+            const titles = { dashboard: 'Real-time Vitals', history: 'Medical Archives', patients: 'Patient Directory' };
+            document.getElementById('tab-title').innerText = titles[tabId] || 'Health Monitor';
         }
 
-        let myChart;
-        const chartData = { labels: Array(20).fill(''), datasets: [
-            { label: 'Heart Rate', borderColor: '#ef4444', borderWidth: 2, data: Array(20).fill(0), tension: 0.4, pointRadius: 0 },
-            { label: 'SpO2', borderColor: '#3b82f6', borderWidth: 2, data: Array(20).fill(0), tension: 0.4, pointRadius: 0 }
-        ]};
+        function connectFirebase() {
+            try {
+                // Check if Firebase library loaded correctly
+                if (typeof firebase === 'undefined') {
+                    throw new Error("Firebase library not detected. Check internet connection.");
+                }
 
-        function updateUI(hr, spo2, temp, glucose) {
-            document.getElementById('val-bpm').innerText = hr;
-            document.getElementById('val-spo2').innerText = spo2;
-            document.getElementById('val-temp').innerText = temp;
-            document.getElementById('val-glucose').innerText = glucose;
+                firebase.initializeApp(firebaseConfig);
+                const db = firebase.database();
+                
+                // Update UI to show connection attempt
+                document.getElementById('status-text').innerText = "Connecting to Cloud...";
+                
+                // Listen for changes
+                db.ref('patient_vitals').on('value', (snap) => {
+                    const data = snap.val();
+                    if (data) {
+                        document.getElementById('status-text').innerText = "Live Cloud Sync Active";
+                        document.getElementById('status-dot').className = "w-2 h-2 bg-green-500 rounded-full";
+                        updateDisplay(data);
+                    } else {
+                        // Folder exists but no data inside yet
+                        document.getElementById('status-text').innerText = "Cloud Connected (No Data Yet)";
+                        document.getElementById('status-dot').className = "w-2 h-2 bg-blue-500 rounded-full";
+                    }
+                }, (error) => {
+                    console.error("Firebase Permission Error:", error);
+                    document.getElementById('status-text').innerText = "Permission Denied (Check Rules)";
+                    startSimulation();
+                });
 
-            // Simple Logic for Badges
-            updateBadge('bpm', hr, 60, 100);
-            updateBadge('spo2', spo2, 95, 100);
-
-            // Update Chart
-            chartData.datasets[0].data.shift();
-            chartData.datasets[0].data.push(hr);
-            chartData.datasets[1].data.shift();
-            chartData.datasets[1].data.push(spo2);
-            myChart.update();
+            } catch (err) {
+                console.error("Firebase Setup Error:", err.message);
+                document.getElementById('status-text').innerText = "Simulation Mode (Offline)";
+                startSimulation();
+            }
         }
 
-        function updateBadge(type, val, min, max) {
-            const el = document.getElementById(`badge-${type}`);
-            if (val >= min && val <= max) {
-                el.innerText = "Normal";
-                el.className = "text-xs font-bold text-green-500 bg-green-50 px-2 py-1 rounded-lg";
-            } else {
-                el.innerText = "Warning";
-                el.className = "text-xs font-bold text-red-500 bg-red-50 px-2 py-1 rounded-lg animate-bounce";
+        function updateDisplay(data) {
+            document.getElementById('val-hr').innerText = data.heart_rate || '--';
+            document.getElementById('val-spo2').innerText = data.spo2 || '--';
+            document.getElementById('val-temp').innerText = data.temp || '--';
+            document.getElementById('val-glucose').innerText = data.glucose || '--';
+            
+            if(data.heart_rate) {
+                mainChart.data.datasets[0].data.shift();
+                mainChart.data.datasets[0].data.push(data.heart_rate);
+                mainChart.update();
             }
         }
 
         function startSimulation() {
             setInterval(() => {
-                const hr = 70 + Math.floor(Math.random() * 10);
-                const spo2 = 97 + Math.floor(Math.random() * 3);
-                updateUI(hr, spo2, 98.6, 120);
+                const mock = { 
+                    heart_rate: 70 + Math.floor(Math.random() * 20),
+                    spo2: 98, temp: 98.6, glucose: 110 
+                };
+                updateDisplay(mock);
             }, 2000);
         }
 
-        function showSection(id) {
-            document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
-            document.getElementById(id).classList.remove('hidden');
-            document.getElementById('page-title').innerText = id.charAt(0).toUpperCase() + id.slice(1);
-        }
-
         window.onload = () => {
-            const ctx = document.getElementById('vitalsChart').getContext('2d');
-            myChart = new Chart(ctx, { type: 'line', data: chartData, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 150 }, x: { display: false } }, animation: false }});
-            if (firebaseConfig.apiKey === "REPLACE_THIS") startSimulation();
+            initChart();
+            connectFirebase();
         };
     </script>
 </body>
